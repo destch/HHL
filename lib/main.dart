@@ -1,6 +1,12 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'API.dart';
 import 'package:emojis/emojis.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter/services.dart';
+
 
 void main() => runApp(MyApp());
 
@@ -140,6 +146,16 @@ class SubmitFormState extends State<SubmitForm> {
   bool _isBeerSelected = false;
   bool _isShotSelected = false;
   bool _isCocktailSelected = false;
+  final locController = TextEditingController();
+  final priceController = TextEditingController();
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is disposed.
+    locController.dispose();
+    priceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,6 +166,7 @@ class SubmitFormState extends State<SubmitForm> {
             child: Column(
               children: <Widget>[
                 TextFormField(
+                  controller: locController,
                   decoration: InputDecoration(labelText: "Name of the spot"),
                   validator: (value) {
                     if (value.isEmpty) {
@@ -159,6 +176,9 @@ class SubmitFormState extends State<SubmitForm> {
                   },
                 ),
                 TextFormField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(labelText: "Price of deal"),
                   validator: (value) {
                     if (value.isEmpty) {
@@ -218,10 +238,31 @@ class SubmitFormState extends State<SubmitForm> {
                 Padding(
                     padding: EdgeInsets.symmetric(vertical: 0.0),
                     child: Align(
-                      child: RaisedButton(child: Text("Submit")),
+                      child: RaisedButton(child: Text("Submit"), onPressed: () {
+                        _submitDeal("test", locController, priceController, _isBeerSelected, _isShotSelected, _isShotSelected);
+                        final snackBar = SnackBar(content: Text('Deal submitted!'));
+
+                        // Find the Scaffold in the widget tree and use it to show a SnackBar.
+                        Scaffold.of(context).showSnackBar(snackBar);
+                      },),
                       alignment: Alignment(-1.0, 0),
                     ))
               ],
             )));
   }
+}
+
+Future<http.Response> _submitDeal(String title, final locController, final priceController,
+    _isBeerSelected, _isShotSelected, _isCocktailSelected) {
+  return http.post(
+    'http://localhost:9000/createdeal',
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(<String, dynamic>{
+      'dealLoc': locController.text,
+      'dealPrice': double.parse(priceController.text),
+      'dealItems': <String, bool>{"beer":_isBeerSelected, "shot":_isShotSelected, "cocktail":_isBeerSelected}
+    }),
+  );
 }
