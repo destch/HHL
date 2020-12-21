@@ -1,12 +1,11 @@
 import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'API.dart';
 import 'package:emojis/emojis.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/services.dart';
-
+import 'package:weekday_selector/weekday_selector.dart';
 
 void main() => runApp(MyApp());
 
@@ -146,6 +145,7 @@ class SubmitFormState extends State<SubmitForm> {
   bool _isBeerSelected = false;
   bool _isShotSelected = false;
   bool _isCocktailSelected = false;
+  final days = List.filled(7, true);
   final locController = TextEditingController();
   final priceController = TextEditingController();
 
@@ -188,7 +188,7 @@ class SubmitFormState extends State<SubmitForm> {
                   },
                 ),
                 Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20.0),
+                  padding: EdgeInsets.symmetric(vertical: 15.0),
                   child: Column(
                     children: <Widget>[
                       Align(
@@ -236,15 +236,55 @@ class SubmitFormState extends State<SubmitForm> {
                   ),
                 ),
                 Padding(
-                    padding: EdgeInsets.symmetric(vertical: 0.0),
+                  padding: EdgeInsets.symmetric(vertical: 0.0),
+                  child: Column(
+                    children: <Widget>[
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 5.0),
+                        child: Align(
+                          child: Text("Days Deal is Available",
+                              style: TextStyle(fontSize: 16)),
+                          alignment: Alignment(-1.0, 0),
+                        ),
+                      ),
+                      WeekdaySelector(
+                        onChanged: (int day) {
+                          setState(() {
+                            // Use module % 7 as Sunday's index in the array is 0 and
+                            // DateTime.sunday constant integer value is 7.
+                            final index = day % 7;
+                            // We "flip" the value in this example, but you may also
+                            // perform validation, a DB write, an HTTP call or anything
+                            // else before you actually flip the value,
+                            // it's up to your app's needs.
+                            days[index] = !days[index];
+                          });
+                        },
+                        values: days,
+                      )
+                    ],
+                  ),
+                ),
+                Padding(
+                    padding: EdgeInsets.symmetric(vertical: 5.0),
                     child: Align(
-                      child: RaisedButton(child: Text("Submit"), onPressed: () {
-                        _submitDeal("test", locController, priceController, _isBeerSelected, _isShotSelected, _isShotSelected);
-                        final snackBar = SnackBar(content: Text('Deal submitted!'));
+                      child: RaisedButton(
+                        child: Text("Submit"),
+                        onPressed: () {
+                          _submitDeal(
+                              locController,
+                              priceController,
+                              _isBeerSelected,
+                              _isShotSelected,
+                              _isShotSelected,
+                              days);
+                          final snackBar =
+                              SnackBar(content: Text('Deal submitted!'));
 
-                        // Find the Scaffold in the widget tree and use it to show a SnackBar.
-                        Scaffold.of(context).showSnackBar(snackBar);
-                      },),
+                          // Find the Scaffold in the widget tree and use it to show a SnackBar.
+                          Scaffold.of(context).showSnackBar(snackBar);
+                        },
+                      ),
                       alignment: Alignment(-1.0, 0),
                     ))
               ],
@@ -252,8 +292,8 @@ class SubmitFormState extends State<SubmitForm> {
   }
 }
 
-Future<http.Response> _submitDeal(String title, final locController, final priceController,
-    _isBeerSelected, _isShotSelected, _isCocktailSelected) {
+Future<http.Response> _submitDeal(final locController, final priceController,
+    _isBeerSelected, _isShotSelected, _isCocktailSelected, final days) {
   return http.post(
     'http://localhost:9000/createdeal',
     headers: <String, String>{
@@ -262,7 +302,20 @@ Future<http.Response> _submitDeal(String title, final locController, final price
     body: jsonEncode(<String, dynamic>{
       'dealLoc': locController.text,
       'dealPrice': double.parse(priceController.text),
-      'dealItems': <String, bool>{"beer":_isBeerSelected, "shot":_isShotSelected, "cocktail":_isBeerSelected}
+      'dealItems': <String, bool>{
+        "beer": _isBeerSelected,
+        "shot": _isShotSelected,
+        "cocktail": _isBeerSelected
+      },
+      'dealDays': <String, bool>{
+        "M": days[0],
+        "T": days[1],
+        "W": days[2],
+        "R": days[3],
+        "F": days[4],
+        "Sa": days[5],
+        "Su": days[6]
+      }
     }),
   );
 }
